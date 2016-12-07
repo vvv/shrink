@@ -1,0 +1,76 @@
+#!/usr/bin/env gawk -f
+
+## mode: 0 (None), 1 (Identical), 2 (Similar).
+## n: Counter of identical (mode=1) or similar (mode=2) lines.
+## prev_line: Previous line.
+## prev_match: Result of previous _match().
+
+function assert(condition, string)
+{
+    if (!condition) {
+        printf("%s:%d: assertion failed: %s\n",
+               FILENAME, FNR, string) > "/dev/stderr"
+        _assert_exit = 1
+        exit 1
+    }
+}
+
+function _match()
+{
+    if (match($0, /^. (TEST'?) [0-9]+$/, groups) > 0)
+	return groups[1]
+}
+
+function flush()
+{
+    assert(mode != 0 || n == 0, "mode = 0 ==> n = 0")
+    if (mode == 1) {
+	if (n > 1)
+	    print ".. Last line repeated", n+1, "times"
+	else
+	    print prev_line
+    } else if (mode == 2) {
+	if (n > 1)
+	    print "..", n, "more lines are pretty similar"
+	else
+	    print prev_line
+    }
+    mode = n = 0
+    prev_line = prev_match = ""
+}
+
+$0 == prev_line {
+    if (mode == 2) {
+	flush()
+	prev_line = $0
+    }
+    mode = 1
+    ++n
+    next
+}
+
+{
+    if (mode == 1)
+	flush()
+    t = _match()
+    if (!t) {
+	if (mode == 2)
+	    flush()
+	print
+    } else if (t == prev_match) {
+	mode = 2
+	++n
+    } else {
+	if (mode == 2)
+	    flush()
+	print
+	prev_match = t
+    }
+    prev_line = $0
+}
+
+END {
+    if (_assert_exit)
+        exit 1
+    flush()
+}

@@ -1,0 +1,4 @@
+Remove repeated lines and lines that match particular pattern from the
+input stream.  The intended use is to compress output logs.
+
+Type `tests/run' to run the tests.
